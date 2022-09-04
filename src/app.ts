@@ -1,0 +1,13 @@
+import express, { json } from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import chalk from "chalk";
+
+dotenv.config();
+
+let app = express();
+app.use(cors(), json());
+
+app.listen(process.env.PORT, () =>
+  console.log(chalk.bold.blue(`Server is running on port ${process.env.PORT}`))
+);
