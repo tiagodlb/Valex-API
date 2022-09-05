@@ -1,12 +1,9 @@
 {
   "compilerOptions": {
-    "target": "es2016",
-    "module": "ES6",
     "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
+    "module": "es6",
     "moduleResolution": "node",
-    "strict": true,
-    "skipLibCheck": true
+    "outDir": "dist"
   },
   "ts-node": {
     "esm": true

@@ -24,6 +24,6 @@ const developmentConfig = {
 const databaseConfig =
   process.env.NODE_ENV === "dev" ? developmentConfig : buildConfig;
 
-console.log(chalk.bold.blue("Database connected"));
+console.log(chalk.bold.green("Database connected"));
 
 export const connection = new Pool(databaseConfig);
