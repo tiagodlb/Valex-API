@@ -4,6 +4,8 @@ import Cryptr from "cryptr";
 import dotenv from "dotenv";
 import * as cardsRepositories from "../repositories/cardRepository.js";
 import * as employeeRepository from "../repositories/employeeRepository.js";
+import * as paymentRepository from "../repositories/paymentRepository.js";
+import * as rechargesRepository from "../repositories/rechargeRepository.js";
 
 dotenv.config();
 
@@ -27,7 +29,7 @@ export async function activateCard(
 
   await verifyCardExpirationDate(cardData);
   await verifyCVC(securityCode, cardData);
-  await verifyIfCardActivated(cardData); 
+  await verifyIfCardActivated(cardData);
 
   const hashedPassword = encryptData(password);
   const cardDataValid = {
@@ -36,6 +38,28 @@ export async function activateCard(
   };
   await cardsRepositories.update(originalCardId, cardDataValid);
   return;
+}
+
+export async function getBalanceAndTransactions(id: number) {
+  const cardData = await cardsRepositories.findById(id);
+  if (!cardData)
+    throw { type: "not_found", message: "The card is not registered" };
+
+  const transactions = await paymentRepository.findByCardId(id);
+  const recharges = await rechargesRepository.findByCardId(id);
+
+  const cardTransactions = transactions
+    .map((transaction) => transaction.amount)
+    .reduce((curr: number, sum: number) => curr + sum, 0);
+  const cardRecharges = recharges
+    .map((recharge) => recharge.amount)
+    .reduce((curr: number, sum: number) => curr + sum, 0);
+
+  return {
+    balance: cardRecharges - cardTransactions,
+    transactions,
+    recharges,
+  };
 }
 
 //local functions
