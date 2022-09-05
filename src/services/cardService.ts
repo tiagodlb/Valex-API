@@ -27,7 +27,7 @@ export async function activateCard(
 
   await verifyCardExpirationDate(cardData);
   await verifyCVC(securityCode, cardData);
-  await verifyIfCardActivated(cardData);
+  await verifyIfCardActivated(cardData); 
 
   const hashedPassword = encryptData(password);
   const cardDataValid = {
