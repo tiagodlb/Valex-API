@@ -7,7 +7,38 @@ import * as employeeRepository from "../repositories/employeeRepository.js";
 
 dotenv.config();
 
-const cryptrSecret = process.env.SECRETKEY || 'secret';
+const crypt = new Cryptr(process.env.SECRETKEY || "secret");
+
+export async function createCard(
+  employeeId: number,
+  type: cardsRepositories.TransactionTypes
+) {
+  const cardData = await formatCardData(employeeId, type);
+  await cardsRepositories.insert(cardData);
+}
+
+export async function activateCard(
+  securityCode: string,
+  password: string,
+  originalCardId: number
+) {
+  const cardData = await cardsRepositories.findById(originalCardId);
+  if (!cardData) throw { type: "not_found", message: "card not found" };
+
+  await verifyCardExpirationDate(cardData);
+  await verifyCVC(securityCode, cardData);
+  await verifyIfCardActivated(cardData);
+
+  const hashedPassword = encryptData(password);
+  const cardDataValid = {
+    password: hashedPassword,
+    originalCardId: originalCardId,
+  };
+  await cardsRepositories.update(originalCardId, cardDataValid);
+  return;
+}
+
+//local functions
 
 export async function validateCreation(
   employeeId: number,
@@ -15,7 +46,8 @@ export async function validateCreation(
   type: cardsRepositories.TransactionTypes
 ) {
   const employee = await employeeRepository.findById(employeeId);
-  if (employee === undefined) throw { type: "not_found", message: "employee not found" };
+  if (employee === undefined)
+    throw { type: "not_found", message: "employee not found" };
   if (employee.companyId !== companyId)
     throw { type: "Unauthorized", message: "unauthorized to create card" };
 
@@ -27,21 +59,13 @@ export async function validateCreation(
     throw { type: "Unauthorized", message: "unauthorized to create card" };
 }
 
-export async function createCard(
-  employeeId: number,
-  type: cardsRepositories.TransactionTypes
-) {
-  const cardData = await formatCardData(employeeId, type);
-  await cardsRepositories.insert(cardData);
-}
-
 async function formatCardData(
   employeeId: number,
   type: cardsRepositories.TransactionTypes
 ) {
   const number = faker.finance.creditCardNumber("mastercard");
   const cardholderName = await formatEmployeeName(employeeId);
-  const securityCode = String( await createCriptoCVV());
+  const securityCode = String(await createCriptoCVV());
   const expirationDate = dayjs(Date.now()).add(5, "year").format("MM/YY");
 
   return {
@@ -76,8 +100,37 @@ async function formatEmployeeName(employeeId: number) {
 
 async function createCriptoCVV() {
   const securityCode = faker.finance.creditCardCVV();
-  const hashedSecurityCode = new Cryptr(cryptrSecret).encrypt(
-    securityCode
-  );
+  const hashedSecurityCode = crypt.encrypt(securityCode);
   return hashedSecurityCode;
+}
+
+async function verifyCVC(
+  securityCode: string,
+  cardData: cardsRepositories.Card
+) {
+  if (securityCode !== decryptData(cardData.securityCode))
+    throw { type: "Unauthorized", message: "Invalid CVV." };
+}
+
+async function verifyIfCardActivated(cardData: cardsRepositories.Card) {
+  if (cardData.password)
+    throw { type: "conflict", message: "This card is already active!" };
+}
+
+async function verifyCardExpirationDate(cardData: cardsRepositories.Card) {
+  const currentDate = dayjs(Date.now()).format("MM/YY");
+  const expirationDate = cardData.expirationDate;
+  const isWithinExpirationDate = dayjs(currentDate).isBefore(expirationDate);
+  if (!isWithinExpirationDate)
+    throw { type: "Unauthorized", message: "Your card has expired." };
+}
+
+function encryptData(data: string): string {
+  const hashedData = crypt.encrypt(data);
+  return hashedData;
+}
+
+function decryptData(cryptedData: string): string {
+  const decryptedData = crypt.decrypt(cryptedData);
+  return decryptedData;
 }

@@ -12,6 +12,6 @@ export async function postCreateCard(req: Request, res: Response) {
         await cardService.createCard(employeeId, type);
         res.sendStatus(201);
     } catch (error) {
-        return handleError(error, req,res)
+        return handleError(error, req, res)
     }
 }
