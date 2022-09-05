@@ -1,7 +1,6 @@
 import dayjs from "dayjs";
 import * as cardsRepositories from "../repositories/cardRepository.js";
 import * as rechargeRepository from "../repositories/rechargeRepository.js";
-import * as employeeRepository from "./../repositories/employeeRepository.js";
 import { verifyIfCardActivated, verifyIfCardIsBlocked } from "./cardService.js";
 
 export async function rechargeCard(cardId: number, amount: number) {
