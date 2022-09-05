@@ -7,3 +7,9 @@ export const cardSchema = joi.object({
     .valid("groceries", "restaurant", "transport", "education", "health")
     .required(),
 });
+
+export const activationCardSchema = joi.object({
+  securityCode: joi.string().length(3).required(),
+  password: joi.string().length(4).required(),
+  originalCardId: joi.number().required(),
+});
