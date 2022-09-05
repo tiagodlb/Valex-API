@@ -29,7 +29,7 @@ export async function activateCard(
 
   await verifyCardExpirationDate(cardData);
   await verifyCVC(securityCode, cardData);
-  await verifyIfCardActivated(cardData);
+  await verifyIfCardIsNotActivated(cardData);
 
   const hashedPassword = encryptData(password);
   const cardDataValid = {
@@ -60,6 +60,30 @@ export async function getBalanceAndTransactions(id: number) {
     transactions,
     recharges,
   };
+}
+
+export async function blockCard( id: number, password: string){
+  const cardData = await cardsRepositories.findById(id);
+  if (!cardData) throw { type: "not_found", message: "The card is not registered" };
+
+  await verifyIfCardActivated(cardData);
+  await verifyIfCardIsBlocked(cardData)
+  await verifyCardExpirationDate(cardData);
+  await verifyCardPassword(password, cardData);
+  await cardsRepositories.update(id, { isBlocked: true });
+
+}
+
+export async function unblockCard( id: number, password: string){
+  const cardData = await cardsRepositories.findById(id);
+  if (!cardData) throw { type: "not_found", message: "The card is not registered" };
+
+  await verifyIfCardActivated(cardData);
+  await verifyIfCardIsNotBlocked(cardData)
+  await verifyCardExpirationDate(cardData);
+  await verifyCardPassword(password, cardData);
+  await cardsRepositories.update(id, { isBlocked: false });
+
 }
 
 //local functions
@@ -136,9 +160,24 @@ async function verifyCVC(
     throw { type: "Unauthorized", message: "Invalid CVV." };
 }
 
-async function verifyIfCardActivated(cardData: cardsRepositories.Card) {
+export async function verifyIfCardActivated(cardData: cardsRepositories.Card) {
+  if (!cardData.password)
+    throw { type: "conflict", message: "This card is not active!" };
+}
+
+async function verifyIfCardIsNotActivated(cardData: cardsRepositories.Card) {
   if (cardData.password)
     throw { type: "conflict", message: "This card is already active!" };
+}
+
+export async function verifyIfCardIsBlocked(cardData: cardsRepositories.Card) {
+  if (cardData.isBlocked)
+    throw { type: "Bad_Request", message: "This card is already blocked!" };
+}
+
+async function verifyIfCardIsNotBlocked(cardData: cardsRepositories.Card) {
+  if (!cardData.isBlocked)
+    throw { type: "Bad_Request", message: "This card is already blocked!" };
 }
 
 async function verifyCardExpirationDate(cardData: cardsRepositories.Card) {
@@ -157,4 +196,8 @@ function encryptData(data: string): string {
 function decryptData(cryptedData: string): string {
   const decryptedData = crypt.decrypt(cryptedData);
   return decryptedData;
+}
+
+async function verifyCardPassword(password: string, cardData: cardsRepositories.Card){
+  if(decryptData(cardData.password) !== password) throw { type: "Bad_Request", message: "Invalid password"}
 }
