@@ -1,6 +1,7 @@
 import dayjs from "dayjs";
 import { faker } from "@faker-js/faker";
 import Cryptr from "cryptr";
+import bcrypt from 'bcrypt';
 import dotenv from "dotenv";
 import * as cardsRepositories from "../repositories/cardRepository.js";
 import * as employeeRepository from "../repositories/employeeRepository.js";
@@ -31,10 +32,11 @@ export async function activateCard(
   await verifyCVC(securityCode, cardData);
   await verifyIfCardIsNotActivated(cardData);
 
-  const hashedPassword = encryptData(password);
+  const hashedPassword = bcrypt.hashSync(password, 10);
   const cardDataValid = {
     password: hashedPassword,
     originalCardId: originalCardId,
+    isBlocked: false
   };
   await cardsRepositories.update(originalCardId, cardDataValid);
   return;
@@ -79,7 +81,7 @@ export async function unblockCard( id: number, password: string){
   if (!cardData) throw { type: "not_found", message: "The card is not registered" };
 
   await verifyIfCardActivated(cardData);
-  await verifyIfCardIsNotBlocked(cardData)
+  await verifyIfCardIsNotBlocked(cardData);
   await verifyCardExpirationDate(cardData);
   await verifyCardPassword(password, cardData);
   await cardsRepositories.update(id, { isBlocked: false });
@@ -156,7 +158,7 @@ async function verifyCVC(
   securityCode: string,
   cardData: cardsRepositories.Card
 ) {
-  if (securityCode !== decryptData(cardData.securityCode))
+  if (securityCode === decryptData(cardData.securityCode))
     throw { type: "Unauthorized", message: "Invalid CVV." };
 }
 
@@ -199,5 +201,5 @@ function decryptData(cryptedData: string): string {
 }
 
 async function verifyCardPassword(password: string, cardData: cardsRepositories.Card){
-  if(decryptData(cardData.password) !== password) throw { type: "Bad_Request", message: "Invalid password"}
-}
+  if(!bcrypt.compareSync(password, cardData.password)) throw {type: 'Unauthorized', message:'Password is not valid'};
+};
